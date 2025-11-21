@@ -1,0 +1,52 @@
+hypothesis testing 
+# Practical 4A
+# Relationship Between Age and Web Purchases
+
+# Hypothesis:
+# H0: There is no significant difference between Age and Web Purchases.
+# H1: There is a significant difference between Age and Web Purchases.
+
+# Step 1: Load Libraries and Dataset
+library(ggplot2)
+library(pwr)
+
+# Read CSV file
+superstore_data <- read.csv(file.choose(), header = TRUE)
+print(colnames(superstore_data))
+
+selected_data <- superstore_data[, c("Id",
+                                     "Year_Birth",
+                                     "Marital_Status",
+                                     "Education",
+                                     "Dt_Customer",
+                                     "Recency",
+                                     "NumStorePurchases",
+                                     "NumWebPurchases",
+                                     "NumWebVisitsMonth")]
+
+# Remove duplicate records
+selected_data <- unique(selected_data)
+
+# Step 2: Perform t-test to Assess Relationship Between Age and Web Purchases
+t_test_result <- t.test(selected_data$Year_Birth,
+                        selected_data$NumWebPurchases)
+print(t_test_result)
+
+# Calculate mean difference and effect size
+mean_diff <- mean(selected_data$Year_Birth) - mean(selected_data$NumWebPurchases)
+sd <- sqrt((var(selected_data$Year_Birth) + var(selected_data$NumWebPurchases)) / 2)
+effect_size <- mean_diff / sd
+print(effect_size)
+
+# Step 3: Power Calculation to Check Accuracy of t-test Result
+sample_size <- 100
+power <- pwr.t.test(n = sample_size,
+                    d = effect_size,
+                    sig.level = 0.05,
+                    power = NULL,
+                    type = "two.sample",
+                    alternative = "two.sided")
+
+# Display power result
+print(power)
+
