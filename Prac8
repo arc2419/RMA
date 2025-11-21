@@ -1,0 +1,54 @@
+A/b testing 
+# prac8_short.R
+# Short A/B test script: group summaries, t-tests (Welch & pooled), prop test, bootstrap CI
+
+library(dplyr)
+
+# 1) load data (expects columns: group, revenue; optional: conversions, visitors)
+df <- read.csv("practical8.csv", stringsAsFactors = FALSE) %>% 
+  mutate(group = as.factor(group))
+
+# 2) quick group summaries
+summ <- df %>% group_by(group) %>% summarise(
+  n = n(),
+  mean = mean(revenue, na.rm=TRUE),
+  sd = sd(revenue, na.rm=TRUE),
+  se = sd/sqrt(n)
+)
+print(summ)
+
+# 3) two-sample t-tests: Welch (default) and pooled (equal var)
+cat("\nWelch (unequal var) t-test:\n")
+print(t.test(revenue ~ group, data=df, var.equal = FALSE))
+
+cat("\nPooled (equal var) t-test:\n")
+print(t.test(revenue ~ group, data=df, var.equal = TRUE))
+
+# 4) pooled t-statistic manually (if you want the statistic)
+pooled_var <- ((summ$sd[1]^2*(summ$n[1]-1) + summ$sd[2]^2*(summ$n[2]-1)) / (summ$n[1]+summ$n[2]-2))
+t_stat <- (summ$mean[1] - summ$mean[2]) / sqrt(pooled_var*(1/summ$n[1] + 1/summ$n[2]))
+cat("\nManual pooled t-statistic =", t_stat, " df =", summ$n[1]+summ$n[2]-2, "\n")
+
+# 5) proportion test if conversions/visitors present
+if(all(c("conversions","visitors") %in% names(df))){
+  convs <- df %>% group_by(group) %>% summarise(conv = sum(conversions), vis = sum(visitors))
+  cat("\nProportion test (conversion rates):\n")
+  print(prop.test(x = convs$conv, n = convs$vis, correct = FALSE))
+}
+
+# 6) bootstrap for difference in means (A - B) and 95% CI
+set.seed(2025)
+B <- 5000
+boot_diff <- replicate(B, {
+  sampA <- sample(df$revenue[df$group=="A"], size = sum(df$group=="A"), replace = TRUE)
+  sampB <- sample(df$revenue[df$group=="B"], size = sum(df$group=="B"), replace = TRUE)
+  mean(sampA, na.rm=TRUE) - mean(sampB, na.rm=TRUE)
+})
+ci <- quantile(boot_diff, probs = c(0.025, 0.975))
+cat("\nBootstrap mean(A)-mean(B):\n")
+cat("Estimate:", mean(boot_diff), " 95% CI:", ci[1], ci[2], "\n")
+
+# 7) quick effect size (Cohen's d)
+pooled_sd <- sqrt(((summ$sd[1]^2*(summ$n[1]-1) + summ$sd[2]^2*(summ$n[2]-1)) / (summ$n[1]+summ$n[2]-2)))
+cohen_d <- (summ$mean[1] - summ$mean[2]) / pooled_sd
+cat("\nCohen's d =", round(cohen_d, 3), "\n")
