@@ -1,0 +1,51 @@
+ experiment for marketing analysis 
+library(dplyr)
+library(ggplot2)
+stimulated a/b data 
+set.seed(123)
+n <- 200
+orig_price <- 10; new_price <- 11; cost <- 5
+control_sales <- rpois(n, lambda = 500)
+variant_sales <- rpois(n, lambda = 480)
+
+control <- data.frame(group="Control",
+                      sales = control_sales,
+                      revenue = control_sales * orig_price,
+                      profit = control_sales * (orig_price - cost))
+
+variant <- data.frame(group="Variant",
+                      sales = variant_sales,
+                      revenue = variant_sales * new_price,
+                      profit = variant_sales * (new_price - cost))
+
+experiment <- bind_rows(control, variant)
+head(experiment)
+
+summary statistics 
+experiment %>% group_by(group) %>%
+  summarise(mean_profit = mean(profit), sd_profit = sd(profit),
+            mean_sales = mean(sales), sd_sales = sd(sales))
+
+t test
+t_res <- t.test(profit ~ group, data = experiment)
+print(t_res)    # check p-value
+
+small plot 
+summary_stats <- experiment %>%
+  group_by(group) %>%
+  summarise(mean_profit = mean(profit), sd_profit = sd(profit))
+
+ggplot(summary_stats, aes(x = group, y = mean_profit)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean_profit - sd_profit, ymax = mean_profit + sd_profit), width = 0.2) +
+  labs(title = "Average Profit by Group", x = "Group", y = "Mean Profit")
+
+randomisation 
+set.seed(123); randomized <- data.frame(customer_id = 1:100, group = sample(c("Control","Variant"), 100, replace=TRUE))
+head(randomized)
+
+sampling from large population 
+population <- data.frame(id = 1:1000000, age = sample(18:70, 1000000, TRUE),
+                         spending = rpois(1000000, 50))
+sampled <- population[sample(nrow(population), 1000), ]
+head(sampled)
