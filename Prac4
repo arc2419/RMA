@@ -50,3 +50,89 @@ power <- pwr.t.test(n = sample_size,
 # Display power result
 print(power)
 
+same as journal 
+Procedure-
+Step 1 : Load Libraries and Dataset
+# Load library
+library(ggplot2)
+
+library(pwr)
+
+
+# Read CSV file
+superstore_data <- read.csv(file.choose(), header = TRUE)
+print(colnames(superstore_data)) selected_data <- superstore_data[, c("Id",
+                                "Year_Birth", "Marital_Status", "Education",
+                                "Dt_Customer", "Recency", "NumStorePurchases",
+                                "NumWebPurchases", "NumWebVisitsMonth")]
+
+# Remove duplicate records
+selected_data <- unique(selected_data)
+
+
+
+Step 2 : Perform t-test to Assess Relationship Between Age and Web Purchases
+# Perform t-test
+t_test_result <- t.test(selected_data$Year_Birth,
+                        selected_data$NumWebPurchases) print(t_test_result)
+
+
+# Calculate mean difference and effect size mean_diff <-
+mean(selected_data$Year_Birth) - mean(selected_data$NumWebPurchases) sd <-
+sqrt((var(selected_data$Year_Birth) + var(selected_data$NumWebPurchases))/2)
+effect_size <- mean_diff / sd print(effect_size)
+
+
+> # Perform t-test
+> t_test_result <- t.test(selected_data$Year_Birth, selected_data$NumWebPurchases)
+> print(t_test_result)
+
+        Welch Two Sample t-test
+
+data:  selected_data$Year_Birth and selected_data$NumWebPurchases
+t = 7558.7, df = 2479.1, p-value < 2.2e-16
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+  1964.211 1965.231
+sample estimates:
+mean of x mean of y
+  1968.805804    4.084821
+
+
+> # Calculate mean difference and effect size
+> mean_diff <- mean(selected_data$Year_Birth) - mean(selected_data$NumWebPurchases)
+> sd <- sqrt((var(selected_data$Year_Birth) + var(selected_data$NumWebPurchases)) / 2)
+> effect_size <- mean_diff / sd
+> print(effect_size)
+[1] 225.8605
+
+
+Step 3 : Power Calculation to Check Accuracy of t-test Result
+# Perform power calculation
+sample_size <- 100
+power <- pwr.t.test(n = sample_size, d = effect_size, sig.level = 0.05, power =NULL,
+                    type ="two.sample", alternative = "two.sided")
+
+
+# Display power result
+print(power)
+
+> library(pwr)
+> # Perform power calculation
+> sample_size <- 100
+> power <- pwr.t.test(n = sample_size, d = effect_size,
++                     sig.level = 0.05, power = NULL,
++                     type = "two.sample", alternative = "two.sided")
++
++ # Display power result
++ print(power)
+
+     Two-sample t test power calculation
+
+              n = 100
+              d = 225.8605
+      sig.level = 0.05
+          power = 1
+    alternative = two.sided
+
+NOTE: n is number in *each* group
