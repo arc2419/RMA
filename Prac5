@@ -58,3 +58,68 @@ ggplot(test, aes(x = as.numeric(default=="yes"), y = prob)) +
   labs(title = "Logistic: actual vs predicted probability", x = "Actual default (0=no,1=yes)", y = "Predicted prob(default)")
 
 # End of script
+
+
+install.packages(c("dplyr"
+"tidyr", "caret"))
+library(dplyr)
+library(tidyr) library(caret) library(ggplot2) # Read CSV file df <-
+read.csv("C:\\Users\\Raj\\Downloads\\archive (3)\\banking.csv")
+summary(df)
+str(df)
+
+> df <- read.csv("C:\\Users\\Raj\\Downloads\\archive (3)\\banking.csv")
+> summary(df)
+
+Step 2 : Data preprocessing any_missing
+<- any(is.na(df)) print(any_missing)
+
+# Convert certain columns to factors
+df$default <- as.factor(df$default) df$housing
+<- as.factor(df$housing) df$loan
+<- as.factor(df$loan)
+
+# Remove unnecessary columns (replace with actual column names) df <-
+df[,!(names(df) %in%c("unnecessary_variable1", "unnecessary_variable2"))]
+
+Step 3 : Outlier detection # Boxplot to visualize balance
+boxplot(df$duration, main = "Duration Boxplot", ylab = "Duration")
+
+# Outlier detection using z-scores z_scores
+<- scale(df$duration) threshold = 3 outliers
+<- abs(z_scores) > threshold # Remove rows
+with outliers & check result df = df[!outliers,
+] summary(df)
+
+> z_scores <- scale(df$duration)
+> threshold = 3
+> outliers <- abs(z_scores) > threshold
+> df <- df[!outliers, ]
+> summary(df)
+
+Step 4 : Split dataset into Training Data & Testing Data
+set.seed(123) split_index <- createDataPartition(df$duration, p= 0.8, list
+= FALSE) train_data <- df[split_index,] test_data <- df[-split_index,]
+
+Step 5 : Linear Regression Model for CLV Prediction
+model <- lm(duration ~ age + campaign + pdays + previous, data = train_data)
+predictions <- predict(model, newdata = test_data)
+mse <- mean((test_data$duration - predictions)^2)
+print(paste("Mean Squared Error:", mse))
+
+#visualise predicted value vs actual value ggplot()+
+geom_point(aes(x=test_data$duration, y=predictions), color = "blue")+
+geom_abline(intercept = 0, slope=1, color = "red", linetype = "dashed")+
+labs(title = "actual vs predicted clv", x = "Actual clv", y = "Predicted clv")
+
+Step 6 : Logistic Regression Model for Default Prediction logistic_model <- glm(default ~
+age + campaign + pdays + previous, data = train_data, family =
+"binomial") logistic_probabilities <- predict(logistic_model, newdata = test_data, type =
+"response") logistic_predictions <- ifelse(logistic_probabilities > 0.5,1,0) logistic_accuracy
+<- sum(logistic_predictions == test_data$default) / nrow(test_data) print(paste("Logistic
+Regression Accuracy: ", logistic_accuracy))
+
+Step 7 : Logistic Visualization ggplot()+
+geom_point(aes(x=test_data$default, y=logistic_probabilities), color="blue")+
+geom_abline(intercept = 0, slope=1, color="red", linetype="dashed")+
+labs(title="actual vs predicted clv", x="actual clv", y="predicted clv")
