@@ -32,3 +32,62 @@ data$Cluster <- fit$cluster
 print(fit$centers)                 # cluster centers (scaled space)
 print(aggregate(data[, num_cols], by=list(Cluster=fit$cluster), FUN=mean))  # cluster means on original numeric columns (unscaled values if you prefer, adjust accordingly)
 head(data)                          # first rows with assigned clusters
+
+
+code in journal 
+# Install packages
+install.packages("NbClust")
+
+# Load packages
+library(NbClust)
+
+# Load data
+data <- read.csv(file.choose(), header = TRUE, sep = ",")
+
+# Review data structure
+str(data)
+
+# Review data summary
+summary(data)
+
+# Preprocessing
+
+# Encode categorical variable Preferred_Genre into numeric
+data$Preferred_Genre <- as.numeric(as.factor(data$Preferred_Genre))
+
+# Scale data (only numeric columns)
+testdata <- data
+testdata <- scale(testdata)
+
+# Determine number of clusters: Option 1 (Elbow method)
+wss <- (nrow(testdata)-1)*sum(apply(testdata,2,var))
+for (i in 2:15)
+  wss[i] <- sum(kmeans(testdata, centers=i)$withinss)
+
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+
+# Determine number of clusters: Option 2 (NbClust)
+set.seed(123)
+resAll.index <- NbClust(data, diss=NULL,
+                        distance="euclidean",
+                        min.nc=2, max.nc=12,
+                        method="kmeans", index="all")
+
+# Inspect NbClust results
+resAll.index
+resAll.CriticalValues
+resAll.index$Best.partition
+
+# Run K-Means with chosen number of clusters (say k=3)
+fit <- kmeans(testdata, 3)
+
+# Calculate average values for each cluster
+aggregate(data, by=list(fit$cluster), FUN=mean)
+
+# Add cluster labels to dataset
+data <- data.frame(data, Cluster = fit$cluster)
+
+# View few rows with assigned clusters
+head(data)
+
