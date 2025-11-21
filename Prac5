@@ -1,0 +1,60 @@
+calculate and predict clv
+# --- compact_practical5.R ---
+# Short, self-contained R script for Practical 5 (replace "yourfile.csv")
+
+# Load packages (install if needed)
+if(!require(tidyverse)) install.packages("tidyverse", repos="https://cloud.r-project.org"); library(tidyverse)
+
+# 1. Read data
+df <- read_csv("yourfile.csv", show_col_types = FALSE)
+
+# 2. Quick preprocessing
+df <- df %>%
+  mutate(
+    default = as.factor(default),
+    housing = as.factor(housing),
+    loan    = as.factor(loan)
+  ) %>%
+  select(-c(unnecessary_variable1, unnecessary_variable2), everything()) # change names if present
+
+# 3. Missing check
+if(any(is.na(df))) print(summary(df %>% summarise_all(~sum(is.na(.)))))
+
+# 4. Outlier detection on 'duration' using z-score and remove extreme outliers (|z| > 3)
+zs <- scale(df$duration)
+outliers_idx <- which(abs(zs) > 3)
+if(length(outliers_idx)>0) df <- df[-outliers_idx, ]
+
+# 5. Train/test split (80/20)
+set.seed(123)
+train_idx <- sample(seq_len(nrow(df)), size = floor(0.8*nrow(df)))
+train <- df[train_idx, ]
+test  <- df[-train_idx, ]
+
+# 6. Linear regression for CLV (duration) prediction
+lm_model <- lm(duration ~ age + campaign + pdays + previous, data = train)
+pred_lm  <- predict(lm_model, newdata = test)
+mse <- mean((test$duration - pred_lm)^2)
+cat("Linear model MSE:", round(mse,2), "\n")
+
+# 7. Plot actual vs predicted (linear)
+library(ggplot2)
+ggplot(test, aes(x = duration, y = pred_lm)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(title = "Actual vs Predicted (duration)", x = "Actual duration", y = "Predicted duration")
+
+# 8. Logistic regression for default prediction
+log_model <- glm(default ~ age + campaign + pdays + previous, data = train, family = binomial)
+prob     <- predict(log_model, newdata = test, type = "response")
+pred_log <- factor(ifelse(prob > 0.5, "yes", "no"), levels = levels(df$default))
+accuracy <- mean(pred_log == test$default)
+cat("Logistic model accuracy:", round(accuracy,3), "\n")
+
+# 9. Plot logistic probabilities vs actual default
+ggplot(test, aes(x = as.numeric(default=="yes"), y = prob)) +
+  geom_jitter(width = 0.1, height = 0) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  labs(title = "Logistic: actual vs predicted probability", x = "Actual default (0=no,1=yes)", y = "Predicted prob(default)")
+
+# End of script
