@@ -52,3 +52,108 @@ cat("Estimate:", mean(boot_diff), " 95% CI:", ci[1], ci[2], "\n")
 pooled_sd <- sqrt(((summ$sd[1]^2*(summ$n[1]-1) + summ$sd[2]^2*(summ$n[2]-1)) / (summ$n[1]+summ$n[2]-2)))
 cohen_d <- (summ$mean[1] - summ$mean[2]) / pooled_sd
 cat("\nCohen's d =", round(cohen_d, 3), "\n")
+
+code from journal 
+# practical8_exact.R
+# Recreated R code matching the practical photos (A/B tests, prop test, bootstrap)
+
+# install & load required packages (uncomment install line if needed)
+# install.packages(c("dplyr","readr","boot"))
+library(dplyr)
+library(readr)
+library(boot)
+
+# Read data (expects practical8.csv in working dir)
+df <- read_csv("practical8.csv")    # columns: group, revenue, conversions (opt), visitors (opt)
+df$group <- as.factor(df$group)
+
+# Quick summaries by group
+summary(df$revenue)
+by(df$revenue, df$group, summary)
+
+# aggregate summary: n, mean, sd, se
+summ <- df %>%
+  group_by(group) %>%
+  summarise(n = n(),
+            mean = mean(revenue, na.rm = TRUE),
+            sd = sd(revenue, na.rm = TRUE),
+            se = sd / sqrt(n))
+print(summ)
+
+# Two sample t-tests
+# 1) Welch (unequal variances)
+cat("\nWelch two sample t-test (unequal var):\n")
+print(t.test(revenue ~ group, data = df, var.equal = FALSE))
+
+# 2) Pooled (equal variances)
+cat("\nPooled two sample t-test (equal var):\n")
+print(t.test(revenue ~ group, data = df, var.equal = TRUE))
+
+# Manual pooled t-statistic calculation (show statistic and df)
+if (nrow(summ) == 2) {
+  s1 <- summ$sd[1]; s2 <- summ$sd[2]
+  n1 <- summ$n[1]; n2 <- summ$n[2]
+  m1 <- summ$mean[1]; m2 <- summ$mean[2]
+  pooled_var <- ((n1 - 1)*s1^2 + (n2 - 1)*s2^2) / (n1 + n2 - 2)
+  t_stat <- (m1 - m2) / sqrt(pooled_var * (1/n1 + 1/n2))
+  df_pooled <- n1 + n2 - 2
+  cat("\nManual pooled t-statistic =", t_stat, " df =", df_pooled, "\n")
+}
+
+# Proportion test (if conversions & visitors present)
+if (all(c("conversions", "visitors") %in% colnames(df))) {
+  convs <- df %>%
+    group_by(group) %>%
+    summarise(total_conv = sum(conversions, na.rm = TRUE),
+              total_vis = sum(visitors, na.rm = TRUE))
+  cat("\nProportion (conversion rate) test (prop.test):\n")
+  print(prop.test(x = convs$total_conv, n = convs$total_vis, correct = FALSE))
+  
+  # manual z-stat for difference in proportions
+  p1 <- convs$total_conv[1] / convs$total_vis[1]
+  p2 <- convs$total_conv[2] / convs$total_vis[2]
+  p_pool <- (convs$total_conv[1] + convs$total_conv[2]) / (convs$total_vis[1] + convs$total_vis[2])
+  z_val <- (p1 - p2) / sqrt(p_pool * (1 - p_pool) * (1/convs$total_vis[1] + 1/convs$total_vis[2]))
+  cat("\nManual z for pooled proportions:", z_val, "\n")
+}
+
+# Bootstrap (difference of means: A - B) using boot package
+# Define statistic function for boot: difference in means (A - B)
+boot_diff_mean <- function(data, indices) {
+  d <- data[indices, ]
+  mean(d$revenue[d$group == levels(d$group)[1]], na.rm = TRUE) -
+    mean(d$revenue[d$group == levels(d$group)[2]], na.rm = TRUE)
+}
+
+# prepare a small dataset copy that preserves group factor levels for bootstrap
+boot_df <- df %>% select(group, revenue)
+# Ensure the group factor levels are consistent
+boot_df$group <- factor(boot_df$group, levels = sort(unique(as.character(boot_df$group))))
+
+set.seed(2025)
+B <- 2000
+boot_res <- boot(data = boot_df, statistic = boot_diff_mean, R = B)
+
+# Bootstrap results and 95% CI
+print(boot_res)
+ci <- boot.ci(boot_res, type = c("perc", "basic", "bca"))
+cat("\nBootstrap 95% CI (percentile):\n")
+print(ci$percent)    # percentile interval
+
+# Also show simple quantile CI from bootstrap replicates (like manual replicate method)
+replicates <- replicate(B, {
+  samp <- boot_df[sample(nrow(boot_df), replace = TRUE), ]
+  mean(samp$revenue[samp$group == levels(boot_df$group)[1]], na.rm = TRUE) -
+    mean(samp$revenue[samp$group == levels(boot_df$group)[2]], na.rm = TRUE)
+})
+cat("\nManual bootstrap mean diff estimate:", mean(replicates), "\n")
+cat("Manual bootstrap 95% CI:", quantile(replicates, c(0.025, 0.975)), "\n")
+
+# Cohen's d (pooled) for effect size
+if (nrow(summ) == 2) {
+  pooled_sd <- sqrt(((n1 - 1)*s1^2 + (n2 - 1)*s2^2) / (n1 + n2 - 2))
+  cohen_d <- (m1 - m2) / pooled_sd
+  cat("\nCohen's d (pooled) =", round(cohen_d, 4), "\n")
+}
+
+# End of script
