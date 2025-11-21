@@ -49,3 +49,105 @@ population <- data.frame(id = 1:1000000, age = sample(18:70, 1000000, TRUE),
                          spending = rpois(1000000, 50))
 sampled <- population[sample(nrow(population), 1000), ]
 head(sampled)
+
+
+same as journal 
+
+# Procedure- Step 1 : Simulate the data
+# Load library
+library(dplyr) 
+library(ggplot2)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Define parameters
+original_price <- 10 
+new_price <- 11 
+cost_per_unit <- 5 
+sample_size <- 200
+
+# No. of days or sales periods
+original_sales_per_day <- 500
+new_sales_per_day <- 480
+
+# Simulate data for the control group (original price)
+control_sales_volume <- rpois(sample_size, lambda = original_sales_per_day)
+control_revenue <- control_sales_volume * original_price
+control_profit <- control_revenue - (control_sales_volume * cost_per_unit)
+
+# Simulate data for the variant group (new price)
+variant_sales_volume <- rpois(sample_size, lambda = new_sales_per_day)
+variant_revenue <- variant_sales_volume * new_price
+variant_profit <- variant_revenue - (variant_sales_volume * cost_per_unit)
+
+# Create a data frame for easier analysis
+control_df <- data.frame(
+  group = "Control",
+  sales_volume = control_sales_volume,
+  revenue = control_revenue,
+  profit = control_profit
+)
+
+variant_df <- data.frame(
+  group = "Variant",
+  sales_volume = variant_sales_volume,
+  revenue = variant_revenue,
+  profit = variant_profit
+)
+
+# Combine the data frames
+experiment_data <- rbind(control_df, variant_df)
+
+
+# Step 2 : Perform Statistical Analysis
+# Summarize key metrics for each group
+summary_stats <- experiment_data %>%
+  group_by(group) %>%
+  summarise(
+    mean_profit = mean(profit),
+    sd_profit = sd(profit),
+    mean_sales_volume = mean(sales_volume),
+    sd_sales_volume = sd(sales_volume)
+  )
+
+print(summary_stats)
+
+# Perform a t-test on the profit data
+t_test_result <- t.test(profit ~ group, data = experiment_data)
+print(t_test_result)
+
+
+# Step 3 : Visualize the Results
+ggplot(summary_stats, aes(x = group, y = mean_profit, fill = group)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_profit - sd_profit,
+                    ymax = mean_profit + sd_profit),
+                width = 0.2) +
+  labs(title = "Average Daily Profit by Group",
+       y = "Average Profit",
+       x = "Experiment Group") +
+  theme_minimal()
+
+
+# Step X : Randomization
+customer_ids <- 1:100
+groups <- sample(c("Control", "Variant"), size = 100, replace = TRUE)
+randomized_data <- data.frame(
+  customer_id = customer_ids,
+  group = groups
+)
+
+head(randomized_data)
+
+
+# Step Y : Sampling
+population <- data.frame(
+  customer_id = 1:1000000,
+  age = sample(18:70, size = 1000000, replace = TRUE),
+  spending = rpois(1000000, lambda = 50)
+)
+
+sample_size <- 1000
+sampled_customers <- population[sample(nrow(population), size = sample_size, replace = FALSE),]
+head(sampled_customers)
