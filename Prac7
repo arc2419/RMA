@@ -1,0 +1,34 @@
+customer segmentation rfm k- means 
+# --- Practical 7: Customer Segmentation (short version) ---
+# install.packages("NbClust")   # run once if not installed
+library(NbClust)
+
+# 1) Load data
+data <- read.csv(file.choose(), stringsAsFactors = FALSE)  # pick CSV
+
+# 2) Encode categorical and prepare numeric matrix
+data$Preferred_Genre <- as.numeric(as.factor(data$Preferred_Genre))
+num_cols <- sapply(data, is.numeric)
+X <- scale(data[, num_cols])    # scaled numeric matrix used for clustering
+
+# 3) Elbow (WSS) to eyeball k
+set.seed(123)
+wss <- sapply(1:15, function(k) if(k==1) sum(rowSums((X - colMeans(X))^2)) else sum(kmeans(X, centers=k, nstart=5)$withinss))
+plot(1:15, wss, type="b", xlab="Number of Clusters", ylab="WSS")
+
+# 4) NbClust (automatic suggestions)
+set.seed(123)
+nb <- NbClust(X, min.nc=2, max.nc=12, method="kmeans", index="all")
+print(table(nb$Best.nc[1,]))   # counts of suggested cluster numbers
+# nb$Best.partition gives final partition if you want it
+
+# 5) Run k-means with chosen k (replace 3 by your chosen k)
+k <- 3
+set.seed(123)
+fit <- kmeans(X, centers = k, nstart = 25)
+
+# 6) Add cluster labels and show results
+data$Cluster <- fit$cluster
+print(fit$centers)                 # cluster centers (scaled space)
+print(aggregate(data[, num_cols], by=list(Cluster=fit$cluster), FUN=mean))  # cluster means on original numeric columns (unscaled values if you prefer, adjust accordingly)
+head(data)                          # first rows with assigned clusters
